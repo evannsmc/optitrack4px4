@@ -1,0 +1,12 @@
+[submodule "px4_msgs"]
+	path = px4_msgs
+	url = https://github.com/evannsmc/px4_msgs.git
+	branch = v1.16_minimal_msgs
+[submodule "mocap_msgs"]
+	path = mocap_msgs
+	url = https://github.com/evannsmc/mocap_msgs.git
+	branch = main
+[submodule "mocap_px4_relays"]
+	path = mocap_px4_relays
+	url = https://github.com/evannsmc/mocap_px4_relays.git
+	branch = main
