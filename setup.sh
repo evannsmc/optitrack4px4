@@ -31,8 +31,8 @@ done
 step() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 
 # --- ROS 2 environment -------------------------------------------------------
-if [[ -z "${ROS_DISTRO:-}" ]]; then
-  for distro in jazzy humble; do
+if [[ -z "${AMENT_PREFIX_PATH:-}" ]]; then
+  for distro in ${ROS_DISTRO:-} jazzy humble; do
     if [[ -f "/opt/ros/$distro/setup.bash" ]]; then
       source "/opt/ros/$distro/setup.bash"
       break
