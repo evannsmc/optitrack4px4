@@ -25,7 +25,7 @@ git clone --recursive https://github.com/evannsmc/optitrack4px4.git ~/ws_optitra
 source ~/ws_optitrack/install/setup.bash
 ```
 
-This repository **is** the workspace's `src/` directory: it holds the `optitrack4px4` package next to its
+This repository is the workspace's `src/` directory: it holds the `optitrack4px4` package next to its
 dependencies, which are git submodules (`px4_msgs` @ `v1.16_minimal_msgs`, `mocap_msgs`,
 `mocap_px4_relays`). `setup.sh` fetches the submodules, installs system dependencies with `rosdep`,
 and builds everything with `colcon build --symlink-install` in Release mode.
