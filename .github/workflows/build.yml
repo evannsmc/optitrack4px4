@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        ros_distro: [humble, jazzy]
+    runs-on: ubuntu-latest
+    container: ros:${{ matrix.ros_distro }}-ros-base
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install git and sudo
+        run: apt-get update && apt-get install -y git sudo
+
+      # Check out as the workspace's src/, exactly like the README quick start
+      - uses: actions/checkout@v4
+        with:
+          path: src
+          submodules: recursive
+
+      - name: Build (src/setup.sh)
+        run: |
+          git config --global --add safe.directory '*'
+          ./src/setup.sh
+
+      - name: Smoke-test launch files
+        run: |
+          source install/setup.bash
+          for f in bringup client client_and_visual_odometry client_vision_full_all; do
+            ros2 launch optitrack4px4 $f.launch.py --show-args > /dev/null
+          done
