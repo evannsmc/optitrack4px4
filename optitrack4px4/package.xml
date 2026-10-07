@@ -4,7 +4,8 @@
   <name>optitrack4px4</name>
   <version>1.0.0</version>
   <description>OptiTrack4PX4 – A ROS 2 OptiTrack (NatNet) to PX4 External Vision Bridge</description>
-  <maintainer email="info@opt4smart.eu">OPT4SMART group</maintainer>
+  <maintainer email="egm@gatech.edu">Evanns Morales</maintainer>
+  <author email="info@opt4smart.eu">OPT4SMART group</author>
   <license>GNU General Public License v3.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
@@ -19,7 +20,7 @@
   <depend>mocap_msgs</depend>
 
   <!-- mocap_px4_relays is needed at runtime for relay nodes (visual_odometry_relay, full_state_relay) -->
-  <!-- <exec_depend>mocap_px4_relays</exec_depend> -->
+  <exec_depend>mocap_px4_relays</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
 
