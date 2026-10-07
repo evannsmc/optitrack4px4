@@ -17,109 +17,64 @@ Tested with ROS 2 Jazzy Jalisco (Ubuntu 24.04) and Humble Hawksbill (Ubuntu 22.0
 
 ## Quick start
 
-Assumes ROS 2 Jazzy/Humble is already installed and `rosdep` initialized.
-
-1. Source ROS 2:
-
-    ```bash
-    source /opt/ros/$ROS_DISTRO/setup.bash
-    ```
-
-2. Create (or choose) a workspace directory:
-
-    ```bash
-    mkdir -p ~/ws_mocap_px4_msgs_drivers/src
-    cd ~/ws_mocap_px4_msgs_drivers/src
-    ```
-
-3. Clone the packages into `src/`:
-
-    ```bash
-    git clone git@github.com:evannsmc/optitrack4px4.git
-    git clone -b v1.16_minimal_msgs git@github.com:evannsmc/px4_msgs.git
-    git clone git@github.com:evannsmc/mocap_msgs.git
-    git clone git@github.com:evannsmc/mocap_px4_relays.git
-    cd ..   # back to workspace root
-    ```
-
-4. Install ROS 2 dependencies:
-
-    ```bash
-    rosdep install --from-paths src --rosdistro $ROS_DISTRO -y --ignore-src
-    ```
-
-5. Build with colcon (Python invocation helps with virtual environments):
-
-    ```bash
-    python3 -m colcon build                 \
-      --symlink-install                     \
-      --cmake-args                          \
-        -DCMAKE_BUILD_TYPE=Release          \
-        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-    ```
-
-6. Source the overlay:
-
-    ```bash
-    source install/setup.bash
-    ```
-
-### Setting up networking parameters
-
-The OptiTrack client connects to Motive over the network using the NatNet protocol. You need to configure the server and local IP addresses.
-
-1. Edit the default `server_address` in `optitrack4px4/launch/client.launch.py` (or pass it as a launch argument) to match the IP of the machine running Motive. For example:
-```python
-    server_address_arg = DeclareLaunchArgument(
-        'server_address',
-        default_value='192.168.1.113',
-        description='OptiTrack/Motive server IP address'
-    )
-```
-
-2. Similarly, set `local_address` to the IP of the Ubuntu machine running this ROS 2 stack on the same LAN.
-
-3. The default connection mode is **Unicast** on NatNet command port `1510` and data port `1511`. These can be overridden via launch arguments or the config file at `config/optitrack4px4_params.yaml`.
-
-4. Make sure the Ubuntu computer and the Motive computer are on the same LAN and can reach each other.
-
-### Launching for vision fusion
-
-To run the OptiTrack client and visual odometry relay (the typical flight-test configuration):
-
-In one terminal:
-```bash
-ros2 launch optitrack4px4 client.launch.py
-```
-
-In another terminal:
-```bash
-ros2 launch mocap_px4_relays visual_odometry_relay.launch.py
-```
-
-And to also include the full state relay:
+Assumes ROS 2 Jazzy or Humble is installed ([guide](https://docs.ros.org/en/jazzy/Installation.html)).
 
 ```bash
-ros2 launch mocap_px4_relays full_state_relay.launch.py
+git clone --recursive https://github.com/evannsmc/optitrack4px4.git ~/ws_optitrack/src
+~/ws_optitrack/src/setup.sh
+source ~/ws_optitrack/install/setup.bash
 ```
 
-Or use the combined launch files to start everything from a single command:
+This repository **is** the workspace's `src/` directory: it holds the `optitrack4px4` package next to its
+dependencies, which are git submodules (`px4_msgs` @ `v1.16_minimal_msgs`, `mocap_msgs`,
+`mocap_px4_relays`). `setup.sh` fetches the submodules, installs system dependencies with `rosdep`,
+and builds everything with `colcon build --symlink-install` in Release mode.
+
+- **Update:** `git -C ~/ws_optitrack/src pull --recurse-submodules && ~/ws_optitrack/src/setup.sh`
+- **Rebuild without rosdep:** `setup.sh --no-deps` (any other arguments go to `colcon build`)
+- **Existing workspace:** clone into `<ws>/src/optitrack4px4` instead; `setup.sh` detects this. If that workspace
+  already has `px4_msgs`, `mocap_msgs` or `mocap_px4_relays`, remove one copy (or `touch <copy>/COLCON_IGNORE`),
+  since colcon refuses duplicate package names.
+- **Dev container:** open the repo in VS Code and choose *Reopen in Container* (Jazzy by default;
+  set `ROS_DISTRO=humble` on the host for Humble).
+
+### Configure your network
+
+Edit `optitrack4px4/config/optitrack4px4_params.yaml`:
+
+```yaml
+server_address: "192.168.1.113"   # IP of the PC running Motive
+local_address: "192.168.1.200"    # IP of this machine
+```
+
+With `--symlink-install` no rebuild is needed. You can also override any parameter at launch
+(`server_address:=192.168.1.50 local_address:=192.168.1.20`) or pass your own file with `params_file:=/path/to/params.yaml`.
+Both machines must be on the same LAN. The default is **Unicast** on NatNet ports `1510`/`1511`; match these to Motive's Data Streaming settings.
+
+### Launch
 
 ```bash
-# Client + visual odometry relay
-ros2 launch optitrack4px4 client_and_visual_odometry.launch.py
+# Client + visual odometry relay (typical flight-test configuration)
+ros2 launch optitrack4px4 bringup.launch.py vo_relay:=true
 
-# Client + visual odometry relay + full state relay
-ros2 launch optitrack4px4 client_vision_full_all.launch.py
+# ... + full state relay
+ros2 launch optitrack4px4 bringup.launch.py vo_relay:=true full_state_relay:=true
+
+# Client only
+ros2 launch optitrack4px4 bringup.launch.py
 ```
 
-The combined launch files accept a `rigid_body_name` argument (default `drone`) and automatically remap the relay's input topic to match:
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `vo_relay` | `false` | Run `visual_odometry_relay` (pose -> `/fmu/in/vehicle_visual_odometry`) |
+| `full_state_relay` | `false` | Run `full_state_relay` (PX4 EKF -> `mocap_msgs/FullState`) |
+| `params_file` | `config/optitrack4px4_params.yaml` | Client parameters |
+| `rigid_body_name` | `drone` | Rigid body (as named in Motive) that the relay forwards to PX4 |
+| any [client parameter](#configuration) | from `params_file` | Override a single value |
 
-```bash
-ros2 launch optitrack4px4 client_and_visual_odometry.launch.py rigid_body_name:=quadrotor
-```
-
-> **Note:** The relay nodes have been moved to the [`mocap_px4_relays`](../mocap_px4_relays/) package so they can be reused with any motion capture source.
+`ros2 launch optitrack4px4 bringup.launch.py --show-args` lists everything. The previous launch files still work
+and are shortcuts for the above: `client.launch.py`, `client_and_visual_odometry.launch.py`
+(`vo_relay:=true`) and `client_vision_full_all.launch.py` (both relays).
 
 ### Example topic tree (all three nodes running) assuming your rigid body is named `drone` in Motive
 
@@ -173,7 +128,7 @@ The static `map -> optitrack` transform is defined by `map_xyz` and `map_rpy`. D
 
 ## Relay nodes
 
-The **visual_odometry_relay** and **full_state_relay** nodes have been moved to the [`mocap_px4_relays`](../mocap_px4_relays/) package so they can be reused with any motion capture source (Vicon, OptiTrack, etc.). See that package's README for full documentation.
+The **visual_odometry_relay** and **full_state_relay** nodes have been moved to the [`mocap_px4_relays`](mocap_px4_relays/) package so they can be reused with any motion capture source (Vicon, OptiTrack, etc.). See that package's README for full documentation.
 
 ### Data pipeline
 
@@ -208,7 +163,7 @@ For the EKF to accept vision input you must enable it on the PX4 side (the `EKF2
 
 ## Configuration
 
-All parameters can be set via the config file (`config/optitrack4px4_params.yaml`) or overridden as launch arguments.
+Parameters of `optitrack_client`, read from `optitrack4px4/config/optitrack4px4_params.yaml` (or `params_file:=`). Each one can be overridden as a launch argument of the same name, except `namespace`, whose launch argument is `topic_namespace`.
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -231,9 +186,8 @@ All parameters can be set via the config file (`config/optitrack4px4_params.yaml
 
 - [OptiTrack Motive](https://optitrack.com/software/motive/) running on another machine, with NatNet streaming enabled and reachable over the network
 - ROS 2 Jazzy Jalisco or Humble Hawksbill installed and sourced (at least *ros-jazzy-ros-base* and *ros-dev-tools* packages, [installation guide](https://docs.ros.org/en/jazzy/Installation.html))
-- *rosdep* initialized and updated for managing ROS 2 package dependencies ([installation guide](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/Rosdep.html))
-- px4_msgs package (forked minimal version available [here](https://github.com/evannsmc/px4_msgs))
-- mocap_msgs package (available [here](https://github.com/evannsmc/mocap_msgs))
+- *rosdep* for ROS 2 package dependencies (`setup.sh` initializes it on first run; [guide](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/Rosdep.html))
+- [`px4_msgs`](https://github.com/evannsmc/px4_msgs/tree/v1.16_minimal_msgs), [`mocap_msgs`](https://github.com/evannsmc/mocap_msgs) and [`mocap_px4_relays`](https://github.com/evannsmc/mocap_px4_relays) are included as git submodules
 
 > Note: the NatNet SDK is vendored inside this repository; no system-wide NatNet install is needed.
 
@@ -247,25 +201,25 @@ All parameters can be set via the config file (`config/optitrack4px4_params.yaml
 
 ---
 
-## Package layout
+## Repository layout
 
 ```text
-optitrack4px4/
-├── src/
-│   ├── communicator.cpp            # optitrack_client – connects via NatNet, converts Y-up ENU -> NED
-│   ├── publisher.cpp               # per-rigid-body publisher creation
-│   └── utils.cpp                   # frame conversion utilities (Eigen quaternion math)
-├── include/optitrack4px4/
-│   ├── communicator.hpp
-│   ├── publisher.hpp
-│   └── utils.hpp
-├── launch/
-│   ├── client.launch.py                      # optitrack_client only
-│   ├── client_and_visual_odometry.launch.py  # client + relay (uses mocap_px4_relays)
-│   └── client_vision_full_all.launch.py      # all three nodes (uses mocap_px4_relays)
-├── config/
-│   └── optitrack4px4_params.yaml             # default parameters
-└── NatNetSDK/                                # vendored NatNet SDK 1.12 (headers + libNatNet.so)
+optitrack4px4/                          # the repo = your workspace's src/
+├── setup.sh                     # submodules + rosdep + colcon build
+├── .devcontainer/               # VS Code dev container (Jazzy/Humble)
+├── .github/workflows/build.yml  # CI: builds on Humble and Jazzy
+├── docs/
+├── optitrack4px4/                    # the ROS 2 package
+│   ├── src/                     # optitrack_client node (communicator, publisher, utils)
+│   ├── include/optitrack4px4/
+│   ├── launch/
+│   │   ├── bringup.launch.py    # client + optional relays (vo_relay:=, full_state_relay:=)
+│   │   └── client*.launch.py    # shortcuts for bringup.launch.py
+│   ├── config/optitrack4px4_params.yaml
+│   ├── NatNetSDK/                  # vendored NatNet SDK 1.12 (headers + libNatNet.so)
+├── px4_msgs/                    # submodule (v1.16_minimal_msgs)
+├── mocap_msgs/                  # submodule
+└── mocap_px4_relays/            # submodule: visual_odometry_relay, full_state_relay
 ```
 
 ---
