@@ -1,0 +1,32 @@
+{
+    "name": "OptiTrack4PX4 ROS 2 Dev",
+    "dockerComposeFile": "compose.yaml",
+    "service": "dev",
+    "workspaceFolder": "/home/ubuntu/ros2_ws",
+    "remoteUser": "ubuntu",
+    "overrideCommand": true,
+    "shutdownAction": "stopCompose",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ranch-hand-robotics.rde-ros-2",
+                "ranch-hand-robotics.urdf-editor",
+                "ms-vscode.cpptools-extension-pack",
+                "ms-vscode.cmake-tools",
+                "redhat.vscode-yaml",
+                "redhat.vscode-xml",
+                "eamodio.gitlens",
+                "ms-python.python",
+                "github.copilot",
+                "github.copilot-chat"
+            ],
+            "settings": {
+                "C_Cpp.default.compileCommands": [
+                    "${workspaceFolder}/build/compile_commands.json"
+                ]
+            }
+        }
+    },
+    "initializeCommand": "git submodule update --init --recursive; xhost +si:localuser:$(whoami) || true",
+    "onCreateCommand": "bash src/setup.sh && ln -sf build/compile_commands.json compile_commands.json"
+}
